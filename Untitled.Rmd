@@ -1,0 +1,154 @@
+---
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r}
+library(dplyr)
+library(fansi)
+library(ggplot2)
+library(tidyr)
+library(datasets)
+library(methods)
+library(readxl)
+library(autoplotly)
+library(fpp2)
+library(dplyr)
+library(timeSeries)
+library(stats)
+library(nycflights13)
+library(ggsci)
+library(ggsci)
+library(ggpubr)
+ANOVA_2_ <- read_excel("~/Downloads/ANOVA (2).xlsx")
+
+```
+
+
+title: "Trabalho REC"
+output: html_document
+
+
+Trabalho Recuperação EPS7000
+Eduardo F. Silva
+25 de novembro de 2018
+Aluno: Lucca
+
+
+Dados
+Os exercícios a utilizam os dados nycflights13::flights que contém todos os vôos que partiram da cidade de Nova York(EUA) em 2013, disponibilizados pelo US Bureau of Transportation Statistics, e armazenados no pacote nycflights13.
+Instale o pacote “nycflights13” e observe que os dados flights já são armazenados como o tipo tibble e por isso são impressos de forma reduzida.
+library(nycflights13)(dim(flights)
+## [1] 336776     19
+data("flights")(?flights
+
+Gráficos
+Crie um boxplot (pacote ggplot2) que apresente os atrasos na chegada (arr_delay) para cada mês do ano. É possível fazer alguma consideração significativa verificando os outliers?
+```{r}
+library(nycflights13)
+voos <- flights
+
+boxplotNYC<- ggplot(data = flights, mapping = aes(x = factor(month), y = arr_delay)) +
+  geom_boxplot(alpha= 0.2)
+
+boxplotNYC
+
+```
+R: Podemos observar aqui que em média todos os boxplots estão pareados, sem que haja uma certa variação considerável deles. 
+  Analisando os Outliers vemos que os mesmos estão separados de forma uniforme durante o decorrer dos meses e, por ser um banco de daodos grande(300K+ data records), existe uma quantidade considerável de outliers na nossa amostra. 
+  Mesmo assim, os outliers ainda não impactam de forma grosseira na nossa análise pois apesar de visíveis, ainda assim não influenciam diretamente.
+--------------------------------------------------------------------------------------------------------
+Teste de hipóteses
+Os programas de formação em gestão são frequentemente planejados para melhorar habilidades e, assim, aumentar a produtividade. Suponha que um psicólogo da empresa administra um conjunto de exames para cada um dos dez supervisores antes do programa de treinamento e, em seguida, administra exames semelhantes no final do programa. Os exames destinam-se a medir as competências de supervisão, com maior pontuação indicando maior habilidade. Os resultados dos testes são mostrados na tabela.
+Os dados indicam que há evidência de que o treinamento foi bem sucedido, melhorando a performance dos supervisores? Teste esta hipótese usando um nível de significância de 0.10. (t= -4.02, rejeita Ho)(
+Encontre e interprete o p-valor do teste.
+
+R: Aqui tratamos de um teste t-student pareado. Vamos usar a nossa função t.test para descobrir se há ou não evidências para rejeitar a Nossa Ho.
+
+```{r}
+antes = c(63,93,84,72,65,72,91,84,71,80)
+depois = c(78,92,91,80,69,85,99,82,81,87)
+teste<- t.test(antes,depois,paired = TRUE,alternative = c("less"))
+teste
+
+```
+Ao executar nossos comandos, podemos ver que o nosso teste de hipótese obteve o resultado de -4.0219 o que significa que Ho(não melhora dos treinamentos) pode ser rejeitada.
+
+Já analisando o nosso P-valor( medida de quanta evidência você tem contra a hipótese nula )obteve um valor de 0.00301 o que por interpretação estatística significa que podemos rejeitar a hipótese nula e assumir que temos uma diferença estatisticamente significativa entre os grupos pareados.
+--------------------------------------------------------------------------------------------------------
+Poder do teste
+Refaça o exercício do Poder do Teste (Aula 3 de teste de hipóteses, slide 11), para p=05 e compare com o resultado/gráfico considerando a hipótese alternativa como    p > 0.5. 
+```{r}
+n = 30
+p = 0.5
+sd = sqrt((p * (1 - p)/n))
+
+c2<-qnorm(0.950,p,sd)
+p_hat_seq = seq(0, 1, 0.01)
+power_30<-1-pnorm(c2,p_hat_seq,sd)
+
+power_30
+library(ggplot2)
+df <- data.frame(prob = p_hat_seq, power_30=power_30)
+ggplot(df)+
+  geom_line(aes(x=prob, y=power_30),size=1, color = "yellow") 
+```
+
+--------------------------------------------------------------------------------------------------------
+ANOVA
+Estudantes receberam diferentes tratamentos antes de estudarem para uma prova. Alguns receberam remédio para memória, outro grupo placebo (farinha) e o terceiro nada recebeu.
+Execute o teste one-way ANOVA para testar a hipótese de que os tratamentos possuem efeitos diferentes.
+
+A tabela pode ser vizualizada abaixo:
+```{r}
+
+dados <- ANOVA_2_
+set.seed(1234)
+dplyr::sample_n(dados, 12)
+
+levels(dados$Desempenho)
+levels(dados$Grupo)
+dados$Grupo <- ordered(dados$Grupo,
+                                                levels = c("remedio", "Nada", "Placebo"))
+dados$Grupo
+group_by(dados, Grupo) %>%
+  summarise(
+    count = n(),
+    mean = mean(Desempenho, na.rm = TRUE),
+    sd = sd(Desempenho, na.rm = TRUE)
+  )
+
+
+anovatest <- aov(Desempenho~Grupo, data = dados)
+summary(anovatest)
+
+testeANOVA<- ggline(dados, x = "Grupo", y = "Desempenho", 
+       add = c("mean_se", "jitter"), 
+       order = c("remedio", "Placebo", "Nada"),
+       ylab = "Desempenho", xlab = "Grupo")
+testeANOVA
+
+```
+
+
+Claramente vemos no gráfico que há uma boa diferença entre os grupos testados mas, para afirmar que há uma melhora significativa do efeito do remédio necessitamos analisar os resultados da função "Summary(anovatest)" que nos indica o P-valor dessa 
+
+
+Séries Temporais
+Complemente seu trabalho de séries temporais ajustando um modelo ETS aos seus dados, e faça uma previsão para o próximo período.
+
+Vamos baixar a nossos dados e transformar em uma variável do tipo ts:
+
+```{r}
+Dados_ETS <- read_excel("~/Downloads/Dados.ETS.xlsx")
+dadoss <- ts(Dados_ETS$Q1, frequency = 4, start = c(1960,1))
+autoplot(dadoss)
+dadoss
+ets <- ets(dadoss)
+autoplot(ets)
+accuracy(ets)
+
+
+```
+
